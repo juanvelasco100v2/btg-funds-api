@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
   workflow_dispatch:
 
 jobs:
@@ -21,13 +21,15 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
 
       - name: Build and test
-        run: ./gradlew build
+        run: gradle build
 
   deploy:
     needs: build-and-test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: dev
     steps:
@@ -41,9 +43,11 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
 
       - name: Build JAR
-        run: ./gradlew bootJar
+        run: gradle bootJar
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
