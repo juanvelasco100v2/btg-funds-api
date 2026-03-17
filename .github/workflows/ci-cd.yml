@@ -69,7 +69,19 @@ jobs:
           docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
           docker push $ECR_REPOSITORY_URI:latest
 
-      - name: Update ECS service
+      - name: Update ECS task definition with new image
+        env:
+          ECR_REPOSITORY_URI: ${{ secrets.ECR_REPOSITORY_URI }}
+          IMAGE_TAG: ${{ github.sha }}
+          ECS_TASK_FAMILY: ${{ secrets.ECS_TASK_FAMILY }}
+        run: |
+          TASK_DEF=$(aws ecs describe-task-definition --task-definition $ECS_TASK_FAMILY)
+          NEW_TASK_DEF=$(echo "$TASK_DEF" | jq --arg IMAGE "$ECR_REPOSITORY_URI:$IMAGE_TAG" \
+            '.taskDefinition | .containerDefinitions[0].image = $IMAGE | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
+          NEW_REVISION=$(aws ecs register-task-definition --cli-input-json "$NEW_TASK_DEF" | jq -r '.taskDefinition.taskDefinitionArn')
+          echo "NEW_REVISION=$NEW_REVISION" >> $GITHUB_ENV
+
+      - name: Deploy to ECS
         env:
           ECS_CLUSTER_NAME: ${{ secrets.ECS_CLUSTER_NAME }}
           ECS_SERVICE_NAME: ${{ secrets.ECS_SERVICE_NAME }}
@@ -77,4 +89,6 @@ jobs:
           aws ecs update-service \
             --cluster $ECS_CLUSTER_NAME \
             --service $ECS_SERVICE_NAME \
+            --task-definition $NEW_REVISION \
+            --desired-count 1 \
             --force-new-deployment
