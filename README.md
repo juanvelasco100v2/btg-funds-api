@@ -2,7 +2,7 @@
 
 API REST para la gestion de fondos de inversion BTG Pactual.
 
-## Stack
+## Stack:
 
 - Java 25 + Spring Boot 4.0.3
 - Gradle 9.3
