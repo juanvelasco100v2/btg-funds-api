@@ -2,7 +2,8 @@ FROM eclipse-temurin:25-jdk AS build
 WORKDIR /app
 COPY gradle gradle
 COPY build.gradle settings.gradle ./
-RUN gradle wrapper --no-daemon
+ADD https://services.gradle.org/distributions/gradle-9.3.1-bin.zip /tmp/gradle.zip
+RUN unzip -q /tmp/gradle.zip -d /opt && rm /tmp/gradle.zip && /opt/gradle-9.3.1/bin/gradle wrapper --no-daemon
 RUN ./gradlew dependencies --no-daemon || true
 COPY src src
 RUN ./gradlew bootJar --no-daemon -x test
