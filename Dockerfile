@@ -3,7 +3,7 @@ WORKDIR /app
 COPY gradle gradle
 COPY build.gradle settings.gradle ./
 ADD https://services.gradle.org/distributions/gradle-9.3.1-bin.zip /tmp/gradle.zip
-RUN unzip -q /tmp/gradle.zip -d /opt && rm /tmp/gradle.zip && /opt/gradle-9.3.1/bin/gradle wrapper --no-daemon
+RUN cd /opt && jar xf /tmp/gradle.zip && rm /tmp/gradle.zip && /opt/gradle-9.3.1/bin/gradle wrapper --no-daemon
 RUN ./gradlew dependencies --no-daemon || true
 COPY src src
 RUN ./gradlew bootJar --no-daemon -x test
