@@ -65,7 +65,8 @@ public class DynamicRoleFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         var path = request.getRequestURI();
-        return path.startsWith("/api/auth/")
+        return "OPTIONS".equals(request.getMethod())
+                || path.startsWith("/api/auth/")
                 || path.startsWith("/api/setup/")
                 || path.startsWith("/actuator/")
                 || path.startsWith("/swagger-ui")
