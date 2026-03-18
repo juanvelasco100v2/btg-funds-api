@@ -1,6 +1,6 @@
 # BTG Funds API
 
-API REST para la gestion de fondos de inversion BTG Pactual.
+API REST para la gestion de fondos de inversion BTG Pactual
 
 ## Stack
 
