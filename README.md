@@ -2,10 +2,10 @@
 
 API REST para la gestion de fondos de inversion BTG Pactual.
 
-## Stack:
+## Stack
 
 - Java 25 + Spring Boot 4.0.3
-- Gradle 9.3
+- Gradle 9.3.1
 - AWS DynamoDB (Enhanced Client)
 - AWS SES + SNS (notificaciones)
 - JWT (jjwt) + Spring Security
@@ -15,7 +15,7 @@ API REST para la gestion de fondos de inversion BTG Pactual.
 ## Ejecucion local
 
 ```bash
-./gradlew bootRun
+gradle bootRun
 ```
 
 Requiere credenciales AWS configuradas (`aws configure`) y las tablas DynamoDB creadas por el stack de infraestructura.
@@ -40,7 +40,7 @@ Variables de entorno opcionales (tienen defaults para dev):
 |---|---|---|---|
 | POST | `/api/auth/register` | Registrar usuario | No |
 | POST | `/api/auth/login` | Iniciar sesion | No |
-| POST | `/api/setup/admin` | Crear admin inicial | No |
+| POST | `/api/setup/admin` | Crear admin inicial (solo funciona una vez) | No |
 | GET | `/api/funds` | Listar fondos | Si |
 | GET | `/api/funds/{id}` | Detalle de fondo | Si |
 | POST | `/api/subscriptions/{fundId}` | Suscribirse a fondo | Si |
@@ -58,17 +58,20 @@ Variables de entorno opcionales (tienen defaults para dev):
 
 Swagger UI: `/swagger-ui.html`
 
+## Operaciones transaccionales
+
+Las operaciones de suscripcion (`subscribe`) y cancelacion (`cancel`) son transaccionales usando `DynamoDB TransactWriteItems`. Esto garantiza que las 3 operaciones se ejecuten de forma atomica (todas o ninguna):
+
+- Actualizar balance del usuario
+- Crear/eliminar la suscripcion
+- Registrar la transaccion
+
 ## Setup inicial
 
 1. Desplegar infraestructura (proyecto `nuevo/`)
-2. Ejecutar seed de fondos y roles: `scripts/seed-funds.sh` y `scripts/seed-roles.sh` (en proyecto infra)
-3. Crear admin inicial:
-
-```bash
-bash scripts/seed-admin.sh https://juanvelasco100.click
-```
-
-O via curl:
+2. Ejecutar seed de roles: `bash scripts/seed-roles.sh dev-roles us-east-1` (en proyecto infra)
+3. Hacer push a `dev` para que CI/CD despliegue la app
+4. Crear admin inicial:
 
 ```bash
 curl -X POST https://juanvelasco100.click/api/setup/admin \
@@ -78,31 +81,36 @@ curl -X POST https://juanvelasco100.click/api/setup/admin \
 
 ## CI/CD (GitHub Actions)
 
-El workflow se activa al hacer push a `main`. Ejecuta build, tests, push de imagen Docker a ECR y actualiza el servicio ECS.
+El workflow se activa al hacer push a `main` o `dev`. Ejecuta:
 
-### Secrets requeridos (GitHub Environment: `dev`)
+1. **Build & Test** - Compila y ejecuta tests (en PRs a main y dev tambien)
+2. **Deploy** (solo en push a main/dev):
+   - Build de imagen Docker
+   - Push a ECR (tag SHA + latest)
+   - Registra nueva revision del task definition con la imagen nueva
+   - Actualiza el servicio ECS con `desired-count 1`
 
-| Secret | Descripcion |
-|---|---|
-| `AWS_ACCESS_KEY_ID` | Access key de AWS |
-| `AWS_SECRET_ACCESS_KEY` | Secret key de AWS |
-| `ECR_REPOSITORY_URI` | URI del repositorio ECR (output del stack de infra) |
-| `ECS_CLUSTER_NAME` | Nombre del cluster ECS: `dev-cluster` |
-| `ECS_SERVICE_NAME` | Nombre del servicio ECS: `dev-api-service` |
+### Secrets requeridos (GitHub)
 
-### Como obtener ECR_REPOSITORY_URI
+| Secret | Valor                                              | Descripcion |
+|---|----------------------------------------------------|---|
+| `AWS_ACCESS_KEY_ID` | (tu access key)                                    | Credenciales AWS |
+| `AWS_SECRET_ACCESS_KEY` | (tu secret key)                                    | Credenciales AWS |
+| `ECR_REPOSITORY_URI` | `cuentaId.dkr.ecr.us-east-1.amazonaws.com/dev-api` | URI del repositorio ECR (fijo) |
+| `ECS_CLUSTER_NAME` | `dev-cluster`                                      | Nombre del cluster ECS |
+| `ECS_SERVICE_NAME` | `dev-api-service`                                  | Nombre del servicio ECS |
+| `ECS_TASK_FAMILY` | `dev-api`                                          | Family del task definition |
 
-```bash
-aws cloudformation describe-stacks --stack-name dev-btg-infrastructure \
-  --query "Stacks[0].Outputs[?OutputKey=='ECRRepositoryUri'].OutputValue" --output text
-```
+### Flujo destroy + recreate
+
+Si destruyes y recreas la infraestructura, solo necesitas hacer push a `dev` y el CI/CD reconstruye y despliega todo automaticamente. Los secrets no cambian.
 
 ## Arquitectura
 
 ```
-Cliente -> ALB (HTTPS) -> ECS Fargate -> DynamoDB
-                                      -> SES (email)
-                                      -> SNS (SMS)
+Cliente -> ALB (HTTPS) -> ECS Fargate (auto scaling 1-2) -> DynamoDB
+                                                          -> SES (email)
+                                                          -> SNS (SMS)
 ```
 
 La autorizacion es dinamica: los permisos de cada rol se almacenan en DynamoDB y se evaluan en tiempo de ejecucion usando `AntPathMatcher`, sin necesidad de cambiar codigo para agregar nuevos roles o permisos.
