@@ -39,6 +39,7 @@ jobs:
     needs: build-and-test
     if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    environment: dev
     steps:
       - uses: actions/checkout@v4
 
