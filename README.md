@@ -10,7 +10,7 @@ API REST para la gestion de fondos de inversion BTG Pactual
 - AWS SES + SNS (notificaciones)
 - JWT (jjwt) + Spring Security
 - Swagger/OpenAPI (springdoc)
-- Docker + ECS Fargate
+- Docker + ECS Fargate.
 
 ## Ejecucion local
 
