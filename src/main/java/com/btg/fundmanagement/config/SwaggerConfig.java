@@ -18,9 +18,9 @@ public class SwaggerConfig {
                         .title("BTG Funds Management API")
                         .version("1.0.0")
                         .description("API para gestionar fondos de inversion - BTG Pactual"))
-                .addSecurityItem(new SecurityRequirement().addList("Bearer"))
+                .addSecurityItem(new SecurityRequirement().addList("bearer-jwt"))
                 .components(new Components()
-                        .addSecuritySchemes("Bearer", new SecurityScheme()
+                        .addSecuritySchemes("bearer-jwt", new SecurityScheme()
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")));
