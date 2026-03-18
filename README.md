@@ -58,7 +58,7 @@ Variables de entorno opcionales (tienen defaults para dev):
 
 Swagger UI: `/swagger-ui.html`
 
-## Operaciones transaccionales.
+## Operaciones transaccionales
 
 Las operaciones de suscripcion (`subscribe`) y cancelacion (`cancel`) son transaccionales usando `DynamoDB TransactWriteItems`. Esto garantiza que las 3 operaciones se ejecuten de forma atomica (todas o ninguna):
 
