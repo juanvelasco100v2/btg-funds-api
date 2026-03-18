@@ -3,9 +3,13 @@ package com.btg.fundmanagement.service;
 import com.btg.fundmanagement.dto.Responses;
 import com.btg.fundmanagement.entity.Subscription;
 import com.btg.fundmanagement.entity.Transaction;
+import com.btg.fundmanagement.entity.User;
 import com.btg.fundmanagement.exception.ApiException;
 import com.btg.fundmanagement.repository.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.enhanced.dynamodb.*;
+import software.amazon.awssdk.enhanced.dynamodb.model.TransactWriteItemsEnhancedRequest;
 
 import java.time.Instant;
 import java.util.List;
@@ -17,19 +21,29 @@ public class SubscriptionService {
     private final SubscriptionRepository subscriptionRepository;
     private final FundRepository fundRepository;
     private final UserRepository userRepository;
-    private final TransactionRepository transactionRepository;
     private final NotificationService notificationService;
+    private final DynamoDbEnhancedClient enhancedClient;
+    private final DynamoDbTable<User> userTable;
+    private final DynamoDbTable<Subscription> subscriptionTable;
+    private final DynamoDbTable<Transaction> transactionTable;
 
     public SubscriptionService(SubscriptionRepository subscriptionRepository,
                                FundRepository fundRepository,
                                UserRepository userRepository,
                                TransactionRepository transactionRepository,
-                               NotificationService notificationService) {
+                               NotificationService notificationService,
+                               DynamoDbEnhancedClient enhancedClient,
+                               @Value("${aws.dynamodb.table.users}") String usersTable,
+                               @Value("${aws.dynamodb.table.subscriptions}") String subscriptionsTable,
+                               @Value("${aws.dynamodb.table.transactions}") String transactionsTable) {
         this.subscriptionRepository = subscriptionRepository;
         this.fundRepository = fundRepository;
         this.userRepository = userRepository;
-        this.transactionRepository = transactionRepository;
         this.notificationService = notificationService;
+        this.enhancedClient = enhancedClient;
+        this.userTable = enhancedClient.table(usersTable, TableSchema.fromBean(User.class));
+        this.subscriptionTable = enhancedClient.table(subscriptionsTable, TableSchema.fromBean(Subscription.class));
+        this.transactionTable = enhancedClient.table(transactionsTable, TableSchema.fromBean(Transaction.class));
     }
 
     public Responses.Message subscribe(String userId, String fundId) {
@@ -46,14 +60,12 @@ public class SubscriptionService {
         }
 
         user.setBalance(user.getBalance() - fund.getMinimumAmount());
-        userRepository.save(user);
 
         var subscription = new Subscription();
         subscription.setUserId(userId);
         subscription.setFundId(fundId);
         subscription.setAmount(fund.getMinimumAmount());
         subscription.setSubscribedAt(Instant.now().toString());
-        subscriptionRepository.save(subscription);
 
         var transaction = new Transaction();
         transaction.setTransactionId(UUID.randomUUID().toString());
@@ -63,7 +75,12 @@ public class SubscriptionService {
         transaction.setType("SUBSCRIBE");
         transaction.setAmount(fund.getMinimumAmount());
         transaction.setCreatedAt(Instant.now().toString());
-        transactionRepository.save(transaction);
+
+        enhancedClient.transactWriteItems(TransactWriteItemsEnhancedRequest.builder()
+                .addPutItem(userTable, user)
+                .addPutItem(subscriptionTable, subscription)
+                .addPutItem(transactionTable, transaction)
+                .build());
 
         notificationService.notifySubscription(user, fund);
 
@@ -80,9 +97,6 @@ public class SubscriptionService {
                 .orElseThrow(() -> new ApiException.FundNotFound(fundId));
 
         user.setBalance(user.getBalance() + subscription.getAmount());
-        userRepository.save(user);
-
-        subscriptionRepository.delete(userId, fundId);
 
         var transaction = new Transaction();
         transaction.setTransactionId(UUID.randomUUID().toString());
@@ -92,7 +106,15 @@ public class SubscriptionService {
         transaction.setType("CANCEL");
         transaction.setAmount(subscription.getAmount());
         transaction.setCreatedAt(Instant.now().toString());
-        transactionRepository.save(transaction);
+
+        enhancedClient.transactWriteItems(TransactWriteItemsEnhancedRequest.builder()
+                .addPutItem(userTable, user)
+                .addDeleteItem(subscriptionTable, Key.builder()
+                        .partitionValue(userId)
+                        .sortValue(fundId)
+                        .build())
+                .addPutItem(transactionTable, transaction)
+                .build());
 
         return new Responses.Message("Suscripcion cancelada al fondo " + fund.getName()
                 + ". Saldo actual: COP $" + String.format("%,d", user.getBalance()));

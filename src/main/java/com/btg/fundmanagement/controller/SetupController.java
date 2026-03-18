@@ -22,7 +22,7 @@ public class SetupController {
 
     @PostMapping("/admin")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Crear usuario administrador inicial (solo funciona si no existe ningún admin)")
+    @Operation(summary = "Crear usuario administrador inicial")
     public Responses.Auth setupAdmin(@Valid @RequestBody Requests.SetupAdmin request) {
         return authService.setupAdmin(request);
     }
