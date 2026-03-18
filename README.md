@@ -68,7 +68,7 @@ Las operaciones de suscripcion (`subscribe`) y cancelacion (`cancel`) son transa
 
 ## Setup inicial
 
-1. Desplegar infraestructura (proyecto `nuevo/`)
+1. Desplegar infraestructura(proyecto `nuevo/`)
 2. Ejecutar seed de roles: `bash scripts/roles.sh dev-roles us-east-1` (en proyecto infra)
 3. Hacer push a `dev` para que CI/CD despliegue la app
 4. Crear admin inicial:
