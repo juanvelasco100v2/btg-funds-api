@@ -1,0 +1,29 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+aws:
+  region: ${AWS_REGION:us-east-1}
+  dynamodb:
+    table:
+      users: ${DYNAMODB_TABLE_USERS:dev-users}
+      funds: ${DYNAMODB_TABLE_FUNDS:dev-funds}
+      transactions: ${DYNAMODB_TABLE_TRANSACTIONS:dev-transactions}
+      roles: ${DYNAMODB_TABLE_ROLES:dev-roles}
+      subscriptions: ${DYNAMODB_TABLE_SUBSCRIPTIONS:dev-subscriptions}
+  sns:
+    topic-arn: ${SNS_TOPIC_ARN:}
+  ses:
+    sender-email: ${SES_SENDER_EMAIL:noreply@juanvelasco100.click}
+
+jwt:
+  secret: ${JWT_SECRET:default-dev-secret-key-that-must-be-changed-in-production-minimum-64-chars}
+  expiration: 86400000
+
+app:
+  initial-balance: 500000
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html

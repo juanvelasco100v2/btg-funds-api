@@ -1,0 +1,8 @@
+.gradle
+build
+docs/
+scripts/
+*.md
+.idea
+*.class
+*.log
